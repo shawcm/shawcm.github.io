@@ -1,0 +1,31 @@
+#+TITLE: Org 转换测试
+#+AUTHOR: 邵传明
+
+
+* lists
+1. 第一
+2. 
+3. 
+4.
+
+
+* table
+
+| a | b |
+|---+---|
+| 1 | 2 |
+
+* code
+
+#+begin_src bash :results output
+ls /
+#+end_src
+
+
+* quote
+
+#+begin_quote
+someone said something
+#+end_quote
+
+
