@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"shawcm.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="命令的分类程序考虑 3 种类型的命令：  普通命令，即只调用某个程序的命令，如 ls, pwd 这种 重定向命令，如 ls &gt;a.txt 管道命令，如 ls | wc  这三种命令可以组合成更复杂的命令，例如 cat &lt; y | sort | wc &gt; y1，但是这条命令可以看作一个管道命令，管道左边为 cat &lt;y，一个重定向命令；管道右边为 sort | wc &gt;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="6.828 hw2：简单 shell 的实现">
+<meta property="og:url" content="https://shawcm.github.io/6-828-hw-shell/index.html">
+<meta property="og:site_name" content="Cyunming">
+<meta property="og:description" content="命令的分类程序考虑 3 种类型的命令：  普通命令，即只调用某个程序的命令，如 ls, pwd 这种 重定向命令，如 ls &gt;a.txt 管道命令，如 ls | wc  这三种命令可以组合成更复杂的命令，例如 cat &lt; y | sort | wc &gt; y1，但是这条命令可以看作一个管道命令，管道左边为 cat &lt;y，一个重定向命令；管道右边为 sort | wc &gt;">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-04-12T06:51:15.000Z">
+<meta property="article:modified_time" content="2022-04-12T13:13:07.735Z">
+<meta property="article:author" content="Cyunming Siu">
+<meta property="article:tag" content="6.828">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://shawcm.github.io/6-828-hw-shell/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>6.828 hw2：简单 shell 的实现 | Cyunming</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Cyunming</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://shawcm.github.io/6-828-hw-shell/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Cyunming Siu">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Cyunming">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          6.828 hw2：简单 shell 的实现
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+              
+
+              <time title="Created: 2022-04-12 14:51:15 / Modified: 21:13:07" itemprop="dateCreated datePublished" datetime="2022-04-12T14:51:15+08:00">2022-04-12</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="命令的分类"><a href="#命令的分类" class="headerlink" title="命令的分类"></a>命令的分类</h1><p>程序考虑 3 种类型的命令：</p>
+<ol>
+<li>普通命令，即只调用某个程序的命令，如 <code>ls</code>, <code>pwd</code> 这种</li>
+<li>重定向命令，如 <code>ls &gt;a.txt</code></li>
+<li>管道命令，如 <code>ls | wc</code></li>
+</ol>
+<p>这三种命令可以组合成更复杂的命令，例如 <code>cat &lt; y | sort | wc &gt; y1</code>，但<br>是这条命令可以看作一个管道命令，管道左边为 <code>cat &lt;y</code>，一个重定向命令；<br>管道右边为 <code>sort | wc &gt; y1</code>，以此类推可以继续分解。</p>
+<p>这几种类型用如下的几个数据结构来表示：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">cmd</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> type;          <span class="comment">//  &#x27; &#x27; (exec), | (pipe), &#x27;&lt;&#x27; or &#x27;&gt;&#x27; for redirection</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">execcmd</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> type;              <span class="comment">// &#x27; &#x27;</span></span><br><span class="line">  <span class="type">char</span> *argv[MAXARGS];   <span class="comment">// arguments to the command to be exec-ed</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">redircmd</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> type;          <span class="comment">// &lt; or &gt; </span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">cmd</span> *<span class="title">cmd</span>;</span>   <span class="comment">// the command to be run (e.g., an execcmd)</span></span><br><span class="line">  <span class="type">char</span> *file;        <span class="comment">// the input/output file</span></span><br><span class="line">  <span class="type">int</span> flags;         <span class="comment">// flags for open() indicating read or write</span></span><br><span class="line">  <span class="type">int</span> fd;            <span class="comment">// the file descriptor number to use for the file</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">pipecmd</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> type;          <span class="comment">// |</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">cmd</span> *<span class="title">left</span>;</span>  <span class="comment">// left side of pipe</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">cmd</span> *<span class="title">right</span>;</span> <span class="comment">// right side of pipe</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>其中 <code>cmd</code> 可以看作 <code>execcmd</code>、<code>redircmd</code>、<code>pipecmd</code> 的父类，再调用时<br>传入一个 <code>cmd</code> 的指针，然后根据器 <code>type</code> 字段的内容进行区分。</p>
+<h1 id="执行简单命令"><a href="#执行简单命令" class="headerlink" title="执行简单命令"></a>执行简单命令</h1><p>简单命令只需调用 <code>execv</code> 即可：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="string">&#x27; &#x27;</span>:</span><br><span class="line">  ecmd = (<span class="keyword">struct</span> execcmd*)cmd;</span><br><span class="line">  <span class="keyword">if</span>(ecmd-&gt;argv[<span class="number">0</span>] == <span class="number">0</span>)</span><br><span class="line">    _exit(<span class="number">0</span>);</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (execvp(ecmd-&gt;argv[<span class="number">0</span>], ecmd-&gt;argv) == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;execv error\n&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">break</span>;</span><br></pre></td></tr></table></figure>
+
+<p><code>execvp</code> 是 <code>execv</code> 家族的一个，它可以从当前 env 的 <code>PATH</code> 中查找响应的程序。</p>
+<h1 id="I-x2F-O-重定向"><a href="#I-x2F-O-重定向" class="headerlink" title="I&#x2F;O 重定向"></a>I&#x2F;O 重定向</h1><p>IO 重定向需要进行文件的操作。即首先打开输入或输出文件（<code>open</code>）得到文<br>件描述符 <code>fd</code>，然后使用 <code>dup</code> 把该文件替换相应的标准输入&#x2F;标准输出的文<br>件描述符。最后运行命令即可。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="string">&#x27;&gt;&#x27;</span>:</span><br><span class="line"><span class="keyword">case</span> <span class="string">&#x27;&lt;&#x27;</span>:</span><br><span class="line">  rcmd = (<span class="keyword">struct</span> redircmd*)cmd;</span><br><span class="line">  <span class="type">int</span> fd = open(rcmd-&gt;file, rcmd-&gt;flags, S_IWUSR | S_IRUSR);</span><br><span class="line">  <span class="keyword">if</span> (fd == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;could not open file %s\n&quot;</span>, rcmd-&gt;file);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (dup2(fd, rcmd-&gt;fd) == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;dup2 error\n&quot;</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  runcmd(rcmd-&gt;cmd);</span><br><span class="line">  <span class="keyword">break</span>;</span><br></pre></td></tr></table></figure>
+
+<h1 id="管道"><a href="#管道" class="headerlink" title="管道"></a>管道</h1><p>首先创建管道，然后对管道左右的程序分别进行输入输出的重定向，即通过管道把左边程序的 stdout 定向到右边程序的 stdin:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="string">&#x27;|&#x27;</span>:</span><br><span class="line">  pcmd = (<span class="keyword">struct</span> pipecmd*)cmd;</span><br><span class="line">  <span class="keyword">if</span> (pipe(p) == <span class="number">-1</span>) <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;pip error\n&quot;</span>);</span><br><span class="line">  <span class="keyword">if</span> (fork1() == <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// child 1 stdout to p[1] the write end</span></span><br><span class="line">    close(p[<span class="number">0</span>]);</span><br><span class="line">    dup2(p[<span class="number">1</span>], STDOUT_FILENO);</span><br><span class="line">    <span class="comment">// exec left cmd</span></span><br><span class="line">    runcmd(pcmd-&gt;left);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (fork1() == <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// child 2 dup p[0] to stdin </span></span><br><span class="line">    close(p[<span class="number">1</span>]);</span><br><span class="line">    dup2(p[<span class="number">0</span>], STDIN_FILENO);</span><br><span class="line">    <span class="comment">// exec right cmd</span></span><br><span class="line">    runcmd(pcmd-&gt;right);</span><br><span class="line">  &#125;</span><br><span class="line">  close(p[<span class="number">0</span>]); close(p[<span class="number">1</span>]);</span><br><span class="line">  wait(&amp;r); wait(&amp;r);</span><br><span class="line">  <span class="keyword">break</span>;</span><br></pre></td></tr></table></figure>
+
+<h1 id="一些问题"><a href="#一些问题" class="headerlink" title="一些问题"></a>一些问题</h1><h2 id="管道相关"><a href="#管道相关" class="headerlink" title="管道相关"></a>管道相关</h2><h3 id="how-does-each-command-decide-when-to-exit"><a href="#how-does-each-command-decide-when-to-exit" class="headerlink" title="how does each command decide when to exit?"></a>how does each command decide when to exit?</h3><p>以 <code>ls | wc</code> 为例：</p>
+<p><code>ls</code> 将输出全部写入管道，exit。这时 <code>ls</code> 包含的所有 fd 也都关闭，因此<br>管道的 write end 被关闭。</p>
+<p><code>wc</code> 从管道中读取 <code>ls</code> 的输入，当 <code>ls</code> 结束，管道的 read end 变的不可<br>读，这时 <code>wc</code> 输出结果，exit。</p>
+<h3 id="what-if-reader-didn’t-close-the-write-end"><a href="#what-if-reader-didn’t-close-the-write-end" class="headerlink" title="what if reader didn’t close the write end?"></a>what if reader didn’t close the write end?</h3><p>测试发现，如果 reader 不在一开始将 <code>p[1]</code> 关闭的话，管道会一直处在可读<br>的状态，即使 writer 已经退出了。reader 将会一直试图读取，因此会无限阻<br>塞。</p>
+<h3 id="what-if-writer-didn’t-close-the-read-end"><a href="#what-if-writer-didn’t-close-the-read-end" class="headerlink" title="what if writer didn’t close the read end?"></a>what if writer didn’t close the read end?</h3><p>无影响。</p>
+<h3 id="how-does-the-kernel-know-when-to-free-the-pipe-buffer"><a href="#how-does-the-kernel-know-when-to-free-the-pipe-buffer" class="headerlink" title="how does the kernel know when to free the pipe buffer?"></a>how does the kernel know when to free the pipe buffer?</h3><p>应当是管道 <code>p</code> 的 fd 的引用数都为 0 的时候？</p>
+<h2 id="fork-相关"><a href="#fork-相关" class="headerlink" title="fork 相关"></a><code>fork</code> 相关</h2><h3 id="what-if-sh-didn’t-fork-for-pcmd-gt-left"><a href="#what-if-sh-didn’t-fork-for-pcmd-gt-left" class="headerlink" title="what if sh didn’t fork for pcmd-&gt;left?"></a>what if sh didn’t fork for pcmd-&gt;left?</h3><p>会导致 <code>pcmd-&gt;right</code> 无法执行。没有 reader 读取管道，<code>pcmd-&gt;left</code> 也会<br>阻塞，因此命令会一直等待，无法返回。</p>
+<h3 id="what-if-sh-didn’t-fork-for-pcmd-gt-right"><a href="#what-if-sh-didn’t-fork-for-pcmd-gt-right" class="headerlink" title="what if sh didn’t fork for pcmd-&gt;right?"></a>what if sh didn’t fork for pcmd-&gt;right?</h3><p>在一些情况下，例如运行 <code>ls | wc</code> 时，这样做看起来没有什么影响。</p>
+<p>但是在运行其他一些 writer 耗时较多的命令时，例如 <code>sleep 10 | echo hi</code><br>时，命令会立即返回，而不等 <code>sleep 结束</code>。这样 shell 的行为与预期不符。<br>这是因为 <code>echo</code> 不需要输入，因此执行结束就返回了。而如果 reader 是需要<br>输入的，例如运行 <code>sleep 10 | wc</code> 时，程序会等待 10s 然后返回。</p>
+<p>再来看一下运行 <code>sleep 10 | echo hi</code> 时发生的情况。由于 <code>echo</code> 不是<br>fork 出来的子进程，而是原来的进程直接 <code>execv</code> 出来的，因此它不会进行<br><code>wait</code> 等待 <code>sleep</code>，而是直接退出。两个程序的状态变化：</p>
+<ol>
+<li><code>echo</code> 进程打印输出，然后 exit，命令返回</li>
+<li><code>sleep</code> 进程成为 orphand，成为 init 的子进程，10s 后 exit，init 执行 wait</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/6-828/" rel="tag"># 6.828</a>
+          </div>
+
+        
+
+
+        
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%91%BD%E4%BB%A4%E7%9A%84%E5%88%86%E7%B1%BB"><span class="nav-number">1.</span> <span class="nav-text">命令的分类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E7%AE%80%E5%8D%95%E5%91%BD%E4%BB%A4"><span class="nav-number">2.</span> <span class="nav-text">执行简单命令</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#I-x2F-O-%E9%87%8D%E5%AE%9A%E5%90%91"><span class="nav-number">3.</span> <span class="nav-text">I&#x2F;O 重定向</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AE%A1%E9%81%93"><span class="nav-number">4.</span> <span class="nav-text">管道</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E9%97%AE%E9%A2%98"><span class="nav-number">5.</span> <span class="nav-text">一些问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%A1%E9%81%93%E7%9B%B8%E5%85%B3"><span class="nav-number">5.1.</span> <span class="nav-text">管道相关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#how-does-each-command-decide-when-to-exit"><span class="nav-number">5.1.1.</span> <span class="nav-text">how does each command decide when to exit?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#what-if-reader-didn%E2%80%99t-close-the-write-end"><span class="nav-number">5.1.2.</span> <span class="nav-text">what if reader didn’t close the write end?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#what-if-writer-didn%E2%80%99t-close-the-read-end"><span class="nav-number">5.1.3.</span> <span class="nav-text">what if writer didn’t close the read end?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#how-does-the-kernel-know-when-to-free-the-pipe-buffer"><span class="nav-number">5.1.4.</span> <span class="nav-text">how does the kernel know when to free the pipe buffer?</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#fork-%E7%9B%B8%E5%85%B3"><span class="nav-number">5.2.</span> <span class="nav-text">fork 相关</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#what-if-sh-didn%E2%80%99t-fork-for-pcmd-gt-left"><span class="nav-number">5.2.1.</span> <span class="nav-text">what if sh didn’t fork for pcmd-&gt;left?</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#what-if-sh-didn%E2%80%99t-fork-for-pcmd-gt-right"><span class="nav-number">5.2.2.</span> <span class="nav-text">what if sh didn’t fork for pcmd-&gt;right?</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Cyunming Siu</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">1</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">tags</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Cyunming Siu</span>
+</div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a>
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
